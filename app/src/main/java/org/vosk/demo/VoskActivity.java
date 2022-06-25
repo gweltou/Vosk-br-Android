@@ -16,13 +16,20 @@ package org.vosk.demo;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
-import android.widget.Button;
+import android.util.Log;
+import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.vosk.LibVosk;
 import org.vosk.LogLevel;
 import org.vosk.Model;
@@ -33,7 +40,6 @@ import org.vosk.android.SpeechStreamService;
 import org.vosk.android.StorageService;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -44,9 +50,8 @@ public class VoskActivity extends Activity implements
 
     static private final int STATE_START = 0;
     static private final int STATE_READY = 1;
-    static private final int STATE_DONE = 2;
-    static private final int STATE_FILE = 3;
-    static private final int STATE_MIC = 4;
+    static private final int STATE_PAUSED = 2;
+    static private final int STATE_DONE = 3;
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -55,19 +60,29 @@ public class VoskActivity extends Activity implements
     private SpeechService speechService;
     private SpeechStreamService speechStreamService;
     private TextView resultView;
+    private ToggleButton recBtn;
+
+
+    private static final String LOG_TAG = VoskActivity.class.getSimpleName();
 
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
+
         setContentView(R.layout.main);
 
         // Setup layout
         resultView = findViewById(R.id.result_text);
-        setUiState(STATE_START);
 
-        findViewById(R.id.recognize_file).setOnClickListener(view -> recognizeFile());
-        findViewById(R.id.recognize_mic).setOnClickListener(view -> recognizeMicrophone());
-        ((ToggleButton) findViewById(R.id.pause)).setOnCheckedChangeListener((view, isChecked) -> pause(isChecked));
+        recBtn = (ToggleButton) findViewById(R.id.pause);
+        recBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Log.d(LOG_TAG, "rec");
+                if (speechService != null) {
+                    speechService.setPause(!isChecked);
+                }
+            }
+        });
 
         LibVosk.setLogLevel(LogLevel.INFO);
 
@@ -78,15 +93,59 @@ public class VoskActivity extends Activity implements
         } else {
             initModel();
         }
+
+        setUiState(STATE_START);
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (speechService != null) {
+            speechService.setPause(true);
+        }
+    }
+
+    @Override
+    public void onRestart() {
+        super.onRestart();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (speechService != null) {
+            speechService.setPause(((ToggleButton) findViewById(R.id.pause)).isChecked());
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if (speechService != null) {
+            speechService.stop();
+            speechService.shutdown();
+        }
+
+        if (speechStreamService != null) {
+            speechStreamService.stop();
+        }
+    }
+
+
     private void initModel() {
-        StorageService.unpack(this, "model-en-us", "model",
+        StorageService.unpack(this, "bzg5", "model",
                 (model) -> {
                     this.model = model;
+                    recognizeMicrophone();
                     setUiState(STATE_READY);
                 },
-                (exception) -> setErrorState("Failed to unpack the model" + exception.getMessage()));
+                (exception) -> setErrorState("Failed to unpack the model " + exception.getMessage()));
     }
 
 
@@ -106,28 +165,47 @@ public class VoskActivity extends Activity implements
         }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
+    private void recognizeMicrophone() {
         if (speechService != null) {
+            setUiState(STATE_DONE);
             speechService.stop();
-            speechService.shutdown();
+            speechService = null;
+        } else {
+            try {
+                Recognizer rec = new Recognizer(model, 16000.0f);
+                speechService = new SpeechService(rec, 16000.0f);
+                speechService.startListening(this);
+                //speechService.setPause(true);
+            } catch (IOException e) {
+                setErrorState(e.getMessage());
+            }
         }
+    }
 
-        if (speechStreamService != null) {
-            speechStreamService.stop();
+
+    private String getTranscript(String hypothesis) {
+        String transcript = null;
+        try {
+            JSONObject voskResponse = new JSONObject(hypothesis);
+            transcript = voskResponse.getString("text");
+        } catch (JSONException e){
+            e.printStackTrace();
         }
+        return transcript;
     }
 
     @Override
     public void onResult(String hypothesis) {
-        resultView.append(hypothesis + "\n");
+        String transcript = getTranscript(hypothesis);
+        if (transcript.length() > 0)
+            resultView.append(transcript + "\n");
     }
 
     @Override
     public void onFinalResult(String hypothesis) {
-        resultView.append(hypothesis + "\n");
+        String transcript = getTranscript(hypothesis);
+        if (transcript.length() > 0)
+            resultView.append(transcript + "\n");
         setUiState(STATE_DONE);
         if (speechStreamService != null) {
             speechStreamService = null;
@@ -136,7 +214,7 @@ public class VoskActivity extends Activity implements
 
     @Override
     public void onPartialResult(String hypothesis) {
-        resultView.append(hypothesis + "\n");
+        //resultView.append(hypothesis + "\n");
     }
 
     @Override
@@ -149,42 +227,26 @@ public class VoskActivity extends Activity implements
         setUiState(STATE_DONE);
     }
 
+
     private void setUiState(int state) {
         switch (state) {
             case STATE_START:
-                resultView.setText(R.string.preparing);
-                resultView.setMovementMethod(new ScrollingMovementMethod());
-                findViewById(R.id.recognize_file).setEnabled(false);
-                findViewById(R.id.recognize_mic).setEnabled(false);
-                findViewById(R.id.pause).setEnabled((false));
+                //resultView.setMovementMethod(new ScrollingMovementMethod());
+                recBtn.setClickable((false));
+                recBtn.setText(R.string.preparing);
+                //findViewById(R.id.pause).setVisibility(View.GONE);
                 break;
             case STATE_READY:
-                resultView.setText(R.string.ready);
-                ((Button) findViewById(R.id.recognize_mic)).setText(R.string.recognize_microphone);
-                findViewById(R.id.recognize_file).setEnabled(true);
-                findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
+                recBtn.setText(R.string.recording);
+                recBtn.setClickable((true));
+                recBtn.setChecked(true);
+                //findViewById(R.id.pause).setVisibility(View.VISIBLE);
+                break;
+            case STATE_PAUSED:
+
                 break;
             case STATE_DONE:
-                ((Button) findViewById(R.id.recognize_file)).setText(R.string.recognize_file);
-                ((Button) findViewById(R.id.recognize_mic)).setText(R.string.recognize_microphone);
-                findViewById(R.id.recognize_file).setEnabled(true);
-                findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
-                break;
-            case STATE_FILE:
-                ((Button) findViewById(R.id.recognize_file)).setText(R.string.stop_file);
-                resultView.setText(getString(R.string.starting));
-                findViewById(R.id.recognize_mic).setEnabled(false);
-                findViewById(R.id.recognize_file).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((false));
-                break;
-            case STATE_MIC:
-                ((Button) findViewById(R.id.recognize_mic)).setText(R.string.stop_microphone);
-                resultView.setText(getString(R.string.say_something));
-                findViewById(R.id.recognize_file).setEnabled(false);
-                findViewById(R.id.recognize_mic).setEnabled(true);
-                findViewById(R.id.pause).setEnabled((true));
+                recBtn.setEnabled((false));
                 break;
             default:
                 throw new IllegalStateException("Unexpected value: " + state);
@@ -193,56 +255,16 @@ public class VoskActivity extends Activity implements
 
     private void setErrorState(String message) {
         resultView.setText(message);
-        ((Button) findViewById(R.id.recognize_mic)).setText(R.string.recognize_microphone);
-        findViewById(R.id.recognize_file).setEnabled(false);
-        findViewById(R.id.recognize_mic).setEnabled(false);
     }
 
-    private void recognizeFile() {
-        if (speechStreamService != null) {
-            setUiState(STATE_DONE);
-            speechStreamService.stop();
-            speechStreamService = null;
-        } else {
-            setUiState(STATE_FILE);
-            try {
-                Recognizer rec = new Recognizer(model, 16000.f, "[\"one zero zero zero one\", " +
-                        "\"oh zero one two three four five six seven eight nine\", \"[unk]\"]");
-
-                InputStream ais = getAssets().open(
-                        "10001-90210-01803.wav");
-                if (ais.skip(44) != 44) throw new IOException("File too short");
-
-                speechStreamService = new SpeechStreamService(rec, ais, 16000);
-                speechStreamService.start(this);
-            } catch (IOException e) {
-                setErrorState(e.getMessage());
-            }
-        }
+    public void clearContent(View view) {
+        resultView.setText("");
     }
 
-    private void recognizeMicrophone() {
-        if (speechService != null) {
-            setUiState(STATE_DONE);
-            speechService.stop();
-            speechService = null;
-        } else {
-            setUiState(STATE_MIC);
-            try {
-                Recognizer rec = new Recognizer(model, 16000.0f);
-                speechService = new SpeechService(rec, 16000.0f);
-                speechService.startListening(this);
-            } catch (IOException e) {
-                setErrorState(e.getMessage());
-            }
-        }
+    public void copyContent(View view) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("bzg", resultView.getText());
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(this, "Eilet !", Toast.LENGTH_SHORT).show();
     }
-
-
-    private void pause(boolean checked) {
-        if (speechService != null) {
-            speechService.setPause(checked);
-        }
-    }
-
 }

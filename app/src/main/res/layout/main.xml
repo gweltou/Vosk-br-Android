@@ -1,34 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="vertical"
     android:padding="16dp">
-    <Button
-        android:id="@+id/recognize_file"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/recognize_file"/>
 
-    <Button
-        android:id="@+id/recognize_mic"
+    <LinearLayout
+        android:id="@+id/linearLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/recognize_microphone"/>
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:onClick="clearContent"
+            android:text="Diverkañ"
+            tools:ignore="UsingOnClickInXml" />
+
+        <Button
+            android:id="@+id/copy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:onClick="copyContent"
+            android:text="Kopiañ"
+            tools:ignore="UsingOnClickInXml" />
+
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/result_text"
+        style="@android:style/Widget.EditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ems="10"
+        android:gravity="top"
+        android:inputType="textMultiLine"
+        android:minHeight="48dp"
+        android:saveEnabled="true"
+        android:scrollbars="vertical"
+        android:scrollHorizontally="false"
+        android:selectAllOnFocus="true"
+        android:singleLine="false"
+        android:textColor="?android:attr/editTextColor"
+        android:textIsSelectable="true"
+        android:verticalScrollbarPosition="right"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <ToggleButton
         android:id="@+id/pause"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textOff="@string/pause"
-        android:textOn="@string/continueRecognition"/>
-
-    <TextView
-        android:id="@+id/result_text"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:gravity="bottom"
-        android:scrollbars="vertical"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
+        android:checked="false"
+        android:textOff="@string/paused"
+        android:textOn="@string/recording"
+        android:visibility="visible" />
 
 </LinearLayout>
