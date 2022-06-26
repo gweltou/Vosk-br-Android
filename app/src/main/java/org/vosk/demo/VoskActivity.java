@@ -77,7 +77,6 @@ public class VoskActivity extends Activity implements
         recBtn = (ToggleButton) findViewById(R.id.pause);
         recBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                Log.d(LOG_TAG, "rec");
                 if (speechService != null) {
                     speechService.setPause(!isChecked);
                 }
@@ -114,7 +113,7 @@ public class VoskActivity extends Activity implements
     public void onResume() {
         super.onResume();
         if (speechService != null) {
-            speechService.setPause(((ToggleButton) findViewById(R.id.pause)).isChecked());
+            speechService.setPause(!((ToggleButton) findViewById(R.id.pause)).isChecked());
         }
     }
 
@@ -175,7 +174,6 @@ public class VoskActivity extends Activity implements
                 Recognizer rec = new Recognizer(model, 16000.0f);
                 speechService = new SpeechService(rec, 16000.0f);
                 speechService.startListening(this);
-                //speechService.setPause(true);
             } catch (IOException e) {
                 setErrorState(e.getMessage());
             }
@@ -234,13 +232,11 @@ public class VoskActivity extends Activity implements
                 //resultView.setMovementMethod(new ScrollingMovementMethod());
                 recBtn.setClickable((false));
                 recBtn.setText(R.string.preparing);
-                //findViewById(R.id.pause).setVisibility(View.GONE);
                 break;
             case STATE_READY:
                 recBtn.setText(R.string.recording);
                 recBtn.setClickable((true));
                 recBtn.setChecked(true);
-                //findViewById(R.id.pause).setVisibility(View.VISIBLE);
                 break;
             case STATE_PAUSED:
 
