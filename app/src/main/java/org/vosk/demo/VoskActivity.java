@@ -21,8 +21,10 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -62,13 +64,11 @@ public class VoskActivity extends Activity implements
     private TextView resultView;
     private ToggleButton recBtn;
 
-
     private static final String LOG_TAG = VoskActivity.class.getSimpleName();
 
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
-
         setContentView(R.layout.main);
 
         // Setup layout
@@ -78,7 +78,15 @@ public class VoskActivity extends Activity implements
         recBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (speechService != null) {
-                    speechService.setPause(!isChecked);
+                    if (isChecked) {
+                        speechService.setPause(false);
+                        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        Log.d(LOG_TAG, "lock acquired");
+                    } else {
+                        speechService.setPause(true);
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        Log.d(LOG_TAG, "lock released");
+                    }
                 }
             }
         });
@@ -93,12 +101,15 @@ public class VoskActivity extends Activity implements
             initModel();
         }
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setUiState(STATE_START);
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        Log.d(LOG_TAG, "onPause");
         if (speechService != null) {
             speechService.setPause(true);
         }
@@ -107,24 +118,28 @@ public class VoskActivity extends Activity implements
     @Override
     public void onRestart() {
         super.onRestart();
+        Log.d(LOG_TAG, "onRestart");
     }
 
     @Override
     public void onResume() {
+        Log.d(LOG_TAG, "onResume");
         super.onResume();
         if (speechService != null) {
-            speechService.setPause(!((ToggleButton) findViewById(R.id.pause)).isChecked());
+            speechService.setPause(!recBtn.isChecked());
         }
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        Log.d(LOG_TAG, "onStop");
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        Log.d(LOG_TAG, "onDestroy");
 
         if (speechService != null) {
             speechService.stop();
@@ -261,6 +276,6 @@ public class VoskActivity extends Activity implements
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("bzg", resultView.getText());
         clipboard.setPrimaryClip(clip);
-        Toast.makeText(this, "Eilet !", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), "Eilet !", Toast.LENGTH_SHORT).show();
     }
 }
