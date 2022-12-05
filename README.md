@@ -1,9 +1,6 @@
 ## About
 
-This demo implements offline speech recognition and speaker identification for mobile applications using Kaldi and Vosk libraries.
+A proof of concept Android App to test a Breton language speech to text model build using Kaldi and [Vosk](https://alphacephei.com/vosk/android).
 
-Check the [releases](https://github.com/alphacep/vosk-android-demo/releases) for pre-built binaries.
+Check the [releases](https://github.com/gweltou/Vosk-br-Android/releases) for pre-built binaries.
 
-## Documentation
-
-For documentation and instructions please visit the [Vosk Website](https://alphacephei.com/vosk/android).
