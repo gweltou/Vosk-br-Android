@@ -21,7 +21,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.PowerManager;
+//import android.os.PowerManager;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -153,7 +153,7 @@ public class VoskActivity extends Activity implements
 
 
     private void initModel() {
-        StorageService.unpack(this, "bzg5", "model",
+        StorageService.unpack(this, "bzg6", "model",
                 (model) -> {
                     this.model = model;
                     recognizeMicrophone();

@@ -19,7 +19,7 @@ android {
 
 tasks.register('genUUID') {
     def uuid = UUID.randomUUID().toString()
-    def odir = file("$buildDir/generated/assets/bzg5")
+    def odir = file("$buildDir/generated/assets/bzg6")
     def ofile = file("$odir/uuid")
     doLast {
         mkdir odir
